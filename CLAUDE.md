@@ -44,7 +44,9 @@ services/api/app/
 services/api/migrations/
 packages/rules/         rules table JSON (source + checked date per rule)
 evals/<agent>/          cases, expected outputs, runner, scores
-tests/                  unit, API and end-to-end tests; fixtures/
+services/api/tests/     api unit and API tests
+apps/web/tests/         web unit tests
+tests/                  end-to-end tests and shared fixtures/
 infra/                  AWS as code
 docs/                   brief, build-plan, screens, architecture,
                         rules-table, plans/ (one design plan per story)
