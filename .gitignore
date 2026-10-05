@@ -1,0 +1,43 @@
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+# node / next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.pnpm-store/
+coverage/
+# local data and large fixtures
+data/
+*.sqlite
+*.db
+*.dump
+tests/fixtures/large/
+evals/**/reports/
+**/*.dwg
+**/*.step
+**/*.stp
+# build and tooling
+dist/
+build/
+.terraform/
+*.tfstate*
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
