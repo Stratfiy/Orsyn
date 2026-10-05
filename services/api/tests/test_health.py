@@ -52,6 +52,7 @@ def test_docs_enabled_local() -> None:
     client = TestClient(app)
     assert client.get("/docs").status_code == 200
     assert client.get("/openapi.json").status_code == 200
+    assert client.get("/redoc").status_code == 200
 
 
 def test_docs_enabled_dev() -> None:
@@ -61,6 +62,7 @@ def test_docs_enabled_dev() -> None:
     client = TestClient(app)
     assert client.get("/docs").status_code == 200
     assert client.get("/openapi.json").status_code == 200
+    assert client.get("/redoc").status_code == 200
 
 
 def test_docs_disabled_prod() -> None:
@@ -70,3 +72,4 @@ def test_docs_disabled_prod() -> None:
     client = TestClient(app)
     assert client.get("/docs").status_code == 404
     assert client.get("/openapi.json").status_code == 404
+    assert client.get("/redoc").status_code == 404

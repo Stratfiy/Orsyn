@@ -17,6 +17,8 @@ Health check: http://localhost:8000/health (or `make api-dev`).
 
 ## Run the web app locally
 
+Note: `apps/web` arrives in a later PR; these commands do not work on this branch yet.
+
 ```
 pnpm install && pnpm --filter web dev
 ```
@@ -26,6 +28,8 @@ Open http://localhost:3000 (or `make web-dev`).
 ## Tests and checks
 
 `make check` runs everything CI runs. `make api-check` and `make web-check` run one side. The raw commands:
+
+The web commands and the evals runner arrive in later PRs; on this branch only the api commands work.
 
 ```
 # api (from services/api)
@@ -44,6 +48,12 @@ pnpm --filter web typecheck
 pnpm --filter web test
 pnpm --filter web build
 ```
+
+## Deploys and environments
+
+- `deploy-dev` in `.github/workflows/ci.yml` is disabled until the AWS account exists. Enabling it is a `needs-founder` PR.
+- The api reads `ORSYN_ENV`, `ORSYN_LOG_LEVEL`, `ORSYN_GIT_SHA` and `ORSYN_AI_PROVIDER`. See `services/api/.env.example`.
+- Locally, copy it to `services/api/.env`. `.env` is git-ignored; never commit it.
 
 ## Layout
 
