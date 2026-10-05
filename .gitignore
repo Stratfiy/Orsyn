@@ -4,7 +4,19 @@
 !.env.example
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+.envrc
+*.tfvars
+!*.tfvars.example
 secrets/
+.claude/settings.local.json
+# logs
+*.log
+npm-debug.log*
+.pnpm-debug.log*
 # python
 __pycache__/
 *.py[cod]
