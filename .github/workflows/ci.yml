@@ -14,8 +14,8 @@ concurrency:
   # Never cancel a main run mid-deploy.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Job id `api` is (and `web`, once apps/web lands) the required status checks for branch protection.
-# Keep them stable. No path filters, so they always report.
+# Job ids `api` and `web` are the required status checks for branch protection.
+# Keep them stable. No path filters, so both always report.
 jobs:
   api:
     runs-on: ubuntu-24.04
@@ -39,6 +39,32 @@ jobs:
       - run: uv run pytest
       # Fake provider, no network, no cost.
       - run: uv run python ../../evals/runner.py --suite _smoke
+
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # pnpm version comes from "packageManager" in the root package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web lint
+      - run: pnpm --filter web format
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
+      - run: pnpm --filter web build
 
   # deploy-dev: DISABLED PLACEHOLDER (E0). Not built yet; documented so the shape is reviewed now.
   #
@@ -71,7 +97,7 @@ jobs:
   # Pin every aws-actions step to a full commit SHA with a version comment, like above.
   deploy-dev:
     if: false # E0: disabled until AWS account exists. Enabling is a needs-founder PR.
-    needs: [api]
+    needs: [api, web]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: dev
