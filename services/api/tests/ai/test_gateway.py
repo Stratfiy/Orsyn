@@ -49,10 +49,11 @@ def test_gateway_cost_computation_prices(monkeypatch: pytest.MonkeyPatch) -> Non
     assert cost == Decimal(18)  # (3 + 15) = 18
 
 
-def test_gateway_cost_logging_fields(caplog: pytest.LogCaptureFixture) -> None:
-    """Done when: one log record per call with all fields but no message text."""
+def test_gateway_cost_logging_fields_success(caplog: pytest.LogCaptureFixture) -> None:
+    """Done when: one log record per call with all fields but no message text in success path."""
     caplog.set_level(logging.INFO, logger="orsyn.ai.cost")
 
+    sentinel = "SENTINEL-7f3a9c"
     gateway = Gateway(FakeProvider())
     req = ModelRequest(
         org_id="org-123",
@@ -60,7 +61,7 @@ def test_gateway_cost_logging_fields(caplog: pytest.LogCaptureFixture) -> None:
         model="fake-echo",
         prompt_id="prompt-abc",
         prompt_version="v2",
-        messages=[Message(role="user", content="test")],
+        messages=[Message(role="user", content=sentinel)],
     )
 
     gateway.complete(req)
@@ -82,8 +83,66 @@ def test_gateway_cost_logging_fields(caplog: pytest.LogCaptureFixture) -> None:
     assert "latency_ms" in extra
     assert extra["outcome"] == "ok"
 
-    # Ensure no message text in the record
-    assert "test" not in extra.values()
+    # Ensure sentinel never appears in the log record
+    assert sentinel not in str(record.__dict__)
+    assert sentinel not in record.getMessage()
+
+
+def test_gateway_cost_logging_no_message_text_error_path(caplog: pytest.LogCaptureFixture) -> None:
+    """Done when: no message text logged on provider error path."""
+    caplog.set_level(logging.INFO, logger="orsyn.ai.cost")
+
+    sentinel = "SENTINEL-7f3a9c"
+    provider = FakeProvider(fail_times=2)
+    gateway = Gateway(provider)
+    req = ModelRequest(
+        org_id="test",
+        feature="test",
+        model="fake-echo",
+        prompt_id="p",
+        prompt_version="1",
+        messages=[Message(role="user", content=sentinel)],
+    )
+
+    with pytest.raises(GatewayError):
+        gateway.complete(req)
+
+    # Check the error log record
+    assert len(caplog.records) >= 1
+    record = caplog.records[-1]
+    assert record.__dict__["outcome"] == "error"
+    assert sentinel not in str(record.__dict__)
+    assert sentinel not in record.getMessage()
+
+
+def test_gateway_cost_logging_no_message_text_timeout_path(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Done when: no message text logged on timeout path."""
+    caplog.set_level(logging.INFO, logger="orsyn.ai.cost")
+
+    sentinel = "SENTINEL-7f3a9c"
+    provider = FakeProvider(delay_s=0.3)
+    gateway = Gateway(provider)
+    req = ModelRequest(
+        org_id="test",
+        feature="test",
+        model="fake-echo",
+        prompt_id="p",
+        prompt_version="1",
+        messages=[Message(role="user", content=sentinel)],
+        timeout_s=0.05,
+    )
+
+    with pytest.raises(GatewayTimeoutError):
+        gateway.complete(req)
+
+    # Check the timeout log record
+    assert len(caplog.records) >= 1
+    record = caplog.records[-1]
+    assert record.__dict__["outcome"] == "timeout"
+    assert sentinel not in str(record.__dict__)
+    assert sentinel not in record.getMessage()
 
 
 def test_gateway_retry_success_on_second_attempt() -> None:
@@ -179,8 +238,7 @@ def test_get_gateway_with_fake_provider() -> None:
 
 def test_get_gateway_invalid_provider() -> None:
     """Done when: get_gateway() with unsupported provider raises GatewayError."""
-    # Pydantic validation prevents invalid ai_provider values,
-    # so we test the error path directly
+    settings = Settings.model_construct(ai_provider="openai")
     with pytest.raises(GatewayError) as exc_info:
-        raise GatewayError("unsupported ai_provider 'invalid'")
+        get_gateway(settings)
     assert "unsupported ai_provider" in str(exc_info.value)
