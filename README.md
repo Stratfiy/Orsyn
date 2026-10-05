@@ -17,8 +17,6 @@ Health check: http://localhost:8000/health (or `make api-dev`).
 
 ## Run the web app locally
 
-Note: `apps/web` arrives in a later PR; these commands do not work on this branch yet.
-
 ```
 pnpm install && pnpm --filter web dev
 ```
@@ -28,8 +26,6 @@ Open http://localhost:3000 (or `make web-dev`).
 ## Tests and checks
 
 `make check` runs everything CI runs. `make api-check` and `make web-check` run one side. The raw commands:
-
-The web commands arrive in a later PR; on this branch the api and evals commands work.
 
 ```
 # api (from services/api)
