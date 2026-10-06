@@ -3,10 +3,11 @@
 # Same commands as CI (.github/workflows/ci.yml).
 api-check:
 	cd services/api && uv sync --frozen \
-		&& uv run ruff format --check . \
-		&& uv run ruff check . --config pyproject.toml \
-		&& uv run mypy app tests \
-		&& uv run pytest
+		&& uv run ruff format --check . ../../evals \
+		&& uv run ruff check . ../../evals --config pyproject.toml \
+		&& uv run mypy \
+		&& uv run pytest \
+		&& uv run python ../../evals/runner.py --suite _smoke
 
 check: api-check
 

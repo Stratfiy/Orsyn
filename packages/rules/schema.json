@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orsyn.example/schemas/rules/rule.schema.json",
+  "title": "Orsyn rule",
+  "description": "One export or scheme rule. Every rule carries a source, a checked date and a review date. Rule files in packages/rules contain rules of this shape; models explain rules but never create them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "layer",
+    "applies_to",
+    "market",
+    "hs_prefixes",
+    "title",
+    "body",
+    "mandatory",
+    "status_logic",
+    "source",
+    "checked_on",
+    "review_by",
+    "review_state"
+  ],
+  "properties": {
+    "id": {
+      "description": "Stable slug, lowercase letters and digits separated by single hyphens, for example eu-cbam. Never reused for a different rule.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "layer": {
+      "description": "1 = applies to every exporter, 2 = depends on product code and market, 3 = benefits and schemes.",
+      "type": "integer",
+      "enum": [1, 2, 3]
+    },
+    "applies_to": {
+      "description": "What the rule applies to, for example goods.",
+      "type": "string",
+      "minLength": 1
+    },
+    "market": {
+      "description": "Destination market the rule applies to, for example EU. Use the market code the roadmap uses for the rule.",
+      "type": "string",
+      "minLength": 1
+    },
+    "hs_prefixes": {
+      "description": "HS code prefixes the rule applies to, as digit strings of 2 to 8 digits. Empty means the rule does not depend on product code (layer 1 and some layer 3 rules).",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "description": "One HS prefix, digits only.",
+        "type": "string",
+        "pattern": "^[0-9]{2,8}$"
+      }
+    },
+    "title": {
+      "description": "Short plain-words heading shown to the supplier.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "body": {
+      "description": "Plain-English explanation a foundry owner understands. Guideline is 40 words or fewer; hard limit 320 characters. Tax steps say to confirm with your CA.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 320
+    },
+    "mandatory": {
+      "description": "True if the step is required by law or the scheme for the exporter; false if optional or advisory.",
+      "type": "boolean"
+    },
+    "status_logic": {
+      "description": "Name of the code path that decides the roadmap status of this rule. New values need a backend change; the curator only describes them.",
+      "type": "string",
+      "enum": ["always_todo"]
+    },
+    "source": {
+      "description": "Where the rule comes from. For review_state verified this must be a primary source that was opened.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "url", "reference"],
+      "properties": {
+        "name": {
+          "description": "Issuing body or publication, for example DGFT, CBIC, GST portal, EU Official Journal.",
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "description": "Link to the source document that was opened.",
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "reference": {
+          "description": "Notification, circular, regulation or section number inside the source.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "checked_on": {
+      "description": "Date (YYYY-MM-DD) the source was last opened and checked.",
+      "type": "string",
+      "format": "date"
+    },
+    "review_by": {
+      "description": "Date (YYYY-MM-DD) by which the rule must be checked again, before any dated fact in it can go stale.",
+      "type": "string",
+      "format": "date"
+    },
+    "review_state": {
+      "description": "verified = a primary source was opened and its reference recorded. awaiting_review = created from a secondary source or not yet checked against a primary one.",
+      "type": "string",
+      "enum": ["verified", "awaiting_review"]
+    }
+  }
+}

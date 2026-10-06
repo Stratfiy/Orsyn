@@ -29,7 +29,7 @@ Open http://localhost:3000 (or `make web-dev`).
 
 `make check` runs everything CI runs. `make api-check` and `make web-check` run one side. The raw commands:
 
-The web commands and the evals runner arrive in later PRs; on this branch only the api commands work.
+The web commands arrive in a later PR; on this branch the api and evals commands work.
 
 ```
 # api (from services/api)

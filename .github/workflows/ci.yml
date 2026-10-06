@@ -33,10 +33,12 @@ jobs:
           enable-cache: true
           cache-dependency-glob: services/api/uv.lock
       - run: uv sync --frozen
-      - run: uv run ruff format --check .
-      - run: uv run ruff check . --config pyproject.toml
-      - run: uv run mypy app tests
+      - run: uv run ruff format --check . ../../evals
+      - run: uv run ruff check . ../../evals --config pyproject.toml
+      - run: uv run mypy
       - run: uv run pytest
+      # Fake provider, no network, no cost.
+      - run: uv run python ../../evals/runner.py --suite _smoke
 
   # deploy-dev: DISABLED PLACEHOLDER (E0). Not built yet; documented so the shape is reviewed now.
   #

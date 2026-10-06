@@ -1,0 +1,2 @@
+{"id": "smoke-1", "input": "hello orsyn", "expected": "hello orsyn"}
+{"id": "smoke-2", "input": "forged flange 150 mm", "expected": "forged flange 150 mm"}
