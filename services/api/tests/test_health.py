@@ -67,7 +67,14 @@ def test_docs_enabled_dev() -> None:
 
 def test_docs_disabled_prod() -> None:
     """Done when: /docs and /openapi.json are 404 in prod."""
-    settings = Settings(_env_file=None, env="prod")  # type: ignore[call-arg]
+    # model_construct bypasses the prod+fake validator, which would otherwise refuse to build this.
+    settings = Settings.model_construct(
+        env="prod",
+        log_level="INFO",
+        git_sha="abc",
+        ai_provider="fake",
+        verification_provider="fake",
+    )
     app = create_app(settings)
     client = TestClient(app)
     assert client.get("/docs").status_code == 404

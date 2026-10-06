@@ -28,9 +28,11 @@ def test_settings_env_dev() -> None:
 
 
 def test_settings_env_prod() -> None:
-    """Done when: ORSYN_ENV=prod is valid."""
-    settings = Settings(_env_file=None, env="prod")  # type: ignore[call-arg]
-    assert settings.env == "prod"
+    """Done when: env=prod with the fake verification provider is refused (KYC never on fake)."""
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, env="prod")  # type: ignore[call-arg]
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, env="prod", verification_provider="fake")  # type: ignore[call-arg]
 
 
 def test_settings_env_invalid() -> None:
@@ -77,7 +79,14 @@ def test_settings_docs_enabled_dev() -> None:
 
 def test_settings_docs_disabled_prod() -> None:
     """Done when: docs_enabled is False in prod."""
-    settings = Settings(_env_file=None, env="prod")  # type: ignore[call-arg]
+    # model_construct skips the prod+fake validator, which is the only way to get a prod object.
+    settings = Settings.model_construct(
+        env="prod",
+        log_level="INFO",
+        git_sha="abc",
+        ai_provider="fake",
+        verification_provider="fake",
+    )
     assert settings.docs_enabled is False
 
 
