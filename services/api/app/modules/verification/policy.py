@@ -9,12 +9,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 
 class CheckType(StrEnum):
+    # GSTIN "pass" means the GSTN status is Active and the PAN segment of the GSTIN is
+    # consistent with the PAN on file (adapter responsibility).
     GSTIN = "gstin"
+    # The supplier's own confirmation of the legal name shown from GSTN (in-house action).
+    LEGAL_NAME_CONFIRMED = "legal_name_confirmed"
     GST_FILING = "gst_filing"
     PAN = "pan"
     UDYAM = "udyam"
@@ -59,7 +64,9 @@ RECHECK_PAN = timedelta(days=365)  # yearly; pending founder confirmation
 RECHECK_IEC = timedelta(days=365)  # yearly; pending founder confirmation
 RECHECK_UDYAM = timedelta(days=365)  # yearly; pending founder confirmation
 RECHECK_CIN = timedelta(days=183)  # six-monthly; pending founder confirmation
-RECHECK_SANCTIONS = timedelta(days=7)  # weekly; pending founder confirmation
+# Weekly; pending founder confirmation. RISK: a missed weekly re-screen would lapse every
+# supplier's Verified badge at once. The scheduler must alert before expiry.
+RECHECK_SANCTIONS = timedelta(days=7)
 
 # Records dated further ahead than this are ignored (a skewed or forged clock must not
 # let a future-dated record win "latest" and pin a badge).
@@ -96,7 +103,7 @@ class BadgeSpec:
     label: str
     # All groups must be satisfied; a group is satisfied by any one of its check types.
     requires: tuple[frozenset[CheckType], ...]
-    buyer_visible: bool
+    audience: Literal["buyers", "suppliers", "internal"]
 
 
 def _all(*types: CheckType) -> tuple[frozenset[CheckType], ...]:
@@ -110,37 +117,39 @@ BADGE_TABLE: dict[Badge, BadgeSpec] = {
         BadgeSpec(
             Badge.VERIFIED_SUPPLIER,
             "Verified supplier",
-            _all(C.GSTIN, C.PAN, C.SIGNATORY, C.SANCTIONS),
-            True,
+            _all(C.GSTIN, C.LEGAL_NAME_CONFIRMED, C.PAN, C.SIGNATORY, C.SANCTIONS),
+            "buyers",
         ),
-        # The GSTIN check passes only if status is Active, the PAN segment matches and the
-        # supplier confirmed the legal name; the adapter encodes that in the outcome.
-        BadgeSpec(Badge.GST_VERIFIED, "GST verified", _all(C.GSTIN), True),
+        # GSTIN pass = status Active and PAN segment consistent (adapter responsibility);
+        # the legal-name confirmation is the supplier's own action.
+        BadgeSpec(
+            Badge.GST_VERIFIED, "GST verified", _all(C.GSTIN, C.LEGAL_NAME_CONFIRMED), "buyers"
+        ),
         # PAN check passes only if the name on PAN matches the GST legal name.
-        BadgeSpec(Badge.PAN_VERIFIED, "PAN verified", _all(C.PAN), True),
-        BadgeSpec(Badge.MSME_UDYAM, "MSME (Udyam) registered", _all(C.UDYAM), True),
+        BadgeSpec(Badge.PAN_VERIFIED, "PAN verified", _all(C.PAN), "buyers"),
+        BadgeSpec(Badge.MSME_UDYAM, "MSME registered", _all(C.UDYAM), "buyers"),
         BadgeSpec(
             Badge.COMPANY_REGISTERED,
-            "Company registered (MCA)",
+            "Company registered",
             (frozenset({C.CIN, C.LLPIN}),),
-            True,
+            "buyers",
         ),
-        BadgeSpec(Badge.EXPORT_READY_IEC, "Export-ready: IEC verified", _all(C.IEC), True),
+        BadgeSpec(Badge.EXPORT_READY_IEC, "Export-ready (IEC)", _all(C.IEC), "buyers"),
         # A staff-approved mismatch is recorded as a passing inhouse check by the review flow.
         BadgeSpec(
             Badge.BANK_VERIFIED,
             "Bank verified",
             (frozenset({C.BANK_PENNY_DROP, C.BANK_REVERSE_PENNY_DROP}),),
-            True,
+            "buyers",
         ),
         BadgeSpec(
             Badge.BUSINESS_VERIFIED,
             "Business verified",
             _all(C.REGISTRY_DOC, C.DOMAIN, C.SANCTIONS),
-            True,
+            "suppliers",
         ),
-        BadgeSpec(Badge.SIGNATORY_CONFIRMED, "Signatory confirmed", _all(C.SIGNATORY), False),
-        BadgeSpec(Badge.SCREENING_CLEAR, "Screening clear", _all(C.SANCTIONS), False),
+        BadgeSpec(Badge.SIGNATORY_CONFIRMED, "Signatory confirmed", _all(C.SIGNATORY), "internal"),
+        BadgeSpec(Badge.SCREENING_CLEAR, "Screening clear", _all(C.SANCTIONS), "internal"),
     )
 }
 
@@ -159,6 +168,7 @@ def recheck_interval(badge: Badge) -> timedelta | None:
 class CheckRecord(BaseModel):
     model_config = ConfigDict(frozen=True, hide_input_in_errors=True)
 
+    check_id: str  # id of the stored check; every badge traces to these (rule 3)
     org_id: str
     provider: str  # which adapter produced the record, e.g. "fake"
     check_type: CheckType
@@ -174,7 +184,9 @@ class BadgeGrant(BaseModel):
 
     badge: Badge
     records: tuple[CheckRecord, ...]  # the checks behind the badge (rule 3)
-    since: AwareDatetime  # when the newest supporting check was made
+    # Latest supporting check time. TODO: "verified since" needs the event log (no
+    # continuous-pass history yet).
+    last_checked: AwareDatetime
     recheck_by: AwareDatetime | None  # earliest expiry among supporting checks
 
 
@@ -241,7 +253,7 @@ def compute_badges(records: list[CheckRecord], now: datetime) -> dict[Badge, Bad
             granted[badge] = BadgeGrant(
                 badge=badge,
                 records=tuple(support),
-                since=max(r.checked_on for r in support),
+                last_checked=max(r.checked_on for r in support),
                 recheck_by=min(expiries) if expiries else None,
             )
     return granted

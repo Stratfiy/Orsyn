@@ -20,7 +20,7 @@ Plan: `docs/plans/KYC-verification.md` (§1.2 badges, §7 screens). Consent text
 
 ### K1. Supplier stepper `/s/verify` (390px)
 
-Layout: top bar with back arrow and the heading "Verify your business". Under it a step tab row (Consent, GSTIN, Business, You, More, Bank), one tab per step, current one ink with a 2px accent underline, done steps with a check in ok colour. One short form per step, sticky bottom bar with the primary button (full width) and a text secondary button. Opens at the first incomplete step. State comes from `GET /v1/verification`. Back keeps typed values in memory for the session (see Storage rule below).
+Layout: top bar with back arrow and the heading "Verify your business". Under it, at 390px, the text "Step 3 of 6" and the step name (Consent, GSTIN, Business, You, More, Bank) as one line, no tabs. At 768px and wider, if the stepper is shown there, a tab row of the six steps may be used instead: current one ink with a 2px accent underline, done steps with a check in ok colour. One short form per step, sticky bottom bar with the primary button (full width) and a text secondary button. Opens at the first incomplete step. State comes from `GET /v1/verification`. Back keeps typed values in memory for the session (see Storage rule below).
 
 Common states per step:
 | State | Behaviour |
@@ -35,9 +35,9 @@ Common states per step:
 
 | Step | Purpose | Fields and copy | Primary / secondary | Validation | Masked |
 | --- | --- | --- | --- | --- | --- |
-| 1 Consent | Record consent for GST, PAN, MCA, DGFT, Udyam checks before any check runs | Heading of step: "Before we check". Rows: What we check / Who we ask ("GSTN, Income Tax, MCA, DGFT, Udyam, through our verification partner Cashfree") / How long we keep it / Your rights / Grievance contact. Link "Read the full notice". Notice text and version come from the API and are shown as returned. | "I agree" / "Not now" (returns to the home screen) | Button enabled only after the notice has loaded. 409 `stale_notice` reloads the notice and asks again. | n/a |
+| 1 Consent | Record consent for GST, PAN, MCA, DGFT, Udyam checks before any check runs | Heading of step: "Before we check". Rows: What we check / Who we ask ("GSTN, Income Tax, MCA, DGFT, Udyam, through our verification partner <provider name from the API>") / How long we keep it / Your rights / Grievance contact. Link "Read the full notice". Notice text and version come from the API and are shown as returned. | "I agree" / "Not now" (returns to the home screen) | Button enabled only after the notice has loaded. 409 `stale_notice` reloads the notice and asks again. | n/a |
 | 2 GSTIN | Get the GSTIN. Everything else is filled from it | Label "GSTIN". Mono input, 15 characters, auto-uppercase, no spaces, `inputmode="text"`, `autocapitalize="characters"`. Link "Use a photo of your GST certificate" (opens camera, K1a). | "Check GSTIN" / "Use a photo instead" | Checksum and shape checked in the browser as they type, hint at 15 characters: "This GSTIN doesn't look right. Check the last character." No call is sent until the checksum passes. Server errors: not active "GST shows this registration as Cancelled. Contact us." (shows the status returned); already linked "This GSTIN is already linked to another account. We'll look into it." (does not say which). | Shows "ends in 1Z5" after the check; the typed value is cleared from the field |
-| 3 Business | Supplier confirms the data that came from GST | Rows, label left, value right: Legal name, Constitution, State, Principal address (all read-only, from GST, each with "from GST, 05 Oct 2026, 14:32 IST"). Editable: Trade name. Muted text "We found your PAN in your GSTIN." (no PAN characters shown). | "Yes, this is us" / "This is not us" (opens "Contact support") | Legal name is not editable. Trade name 2 to 80 characters. | PAN not shown. |
+| 3 Business | Supplier confirms the data that came from GST | Rows, label left, value right: Legal name, Constitution, State, Principal address (all read-only, from GST, each with "from GST, 05 Oct 2026, 14:32 IST"). Editable: Trade name. Muted text "We found your PAN in your GSTIN." (no PAN characters shown). | "Yes, this is us" / "This is not us" (opens "Contact support"). Tapping "Yes, this is us" records the legal-name confirmation the server requires for the GST badge; without it the GST verified badge is not issued. | Legal name is not editable. Trade name 2 to 80 characters. | PAN not shown. |
 | 4 You | Confirm the signatory | Name (prefilled from login), Role as a radio list (Proprietor, Partner, Director, Designated partner, Karta, Authorised signatory). Only if the API answers `pan_needed`: "Your PAN" (mono, 10 characters, uppercase). Or "Upload an authorisation letter". | "Continue" / "Upload a letter instead" | PAN `AAAAA9999A`, 4th character checked in the browser. Roles are a closed list. | PAN field: `autocomplete="off"`, `autocorrect="off"`, `spellcheck="false"`, `type="text"` with CSS/visual masking (e.g. `-webkit-text-security: disc`) and a show toggle. Not `type="password"`, so password managers never offer to save it. Never echoed back. |
 | 5 More | Optional registrations | Three rows, each a toggle with a field: "I have a Udyam registration" (mono `UDYAM-XX-00-0000000`, auto-uppercase), "I export" (no field, "We'll check your IEC with your PAN"), "CIN or LLPIN" (shown only when constitution is a company or LLP, prefilled if returned). | "Continue" / "Skip for now" | Udyam shape, CIN 21 characters, LLPIN `AAA-0000`. Each row shows its own result inline: Verified in ok colour, "Not found" in warn with "Edit". | none |
 | 6 Bank | Verify the payout account. Can be skipped, required before the first payout | Option A (default, **pending founder Q12**): "Pay ₹1 from your business account by UPI". Shows QR and a "Open UPI app" link. Note row: "Use the account you want to be paid in. Refund: as the bank partner's rules" (final wording after Q12). Option B: "Type account details": Account number (`inputmode="numeric"`, `autocomplete="off"`, visually masked like PAN, not `type="password"`), Re-enter account number (same), IFSC (mono, auto-uppercase, 11 characters), bank name shown under the field once the IFSC is valid. Option C: "Photo of a cancelled cheque" (K1a pattern). | A: "I've paid" / B: "Verify account" / "Do this later" | Account number 9 to 18 digits, both entries must match (no paste in the second field), IFSC `^[A-Z]{4}0[A-Z0-9]{6}$`. Mismatch: "Your bank shows the name as R*** E*********. We'll review it within 2 working days." (first letters only). Not found: "The bank couldn't find this account." | Account number masked to last 4 after submit. Never shown again in full to anyone in the app. |
@@ -79,11 +79,11 @@ Each unfinished row is a link to its step. Rows in review show "In review" (warn
 **Badges.** Row per badge, label left, state right as coloured text:
 | State | Text | Colour | Note under the row |
 | --- | --- | --- | --- |
-| Verified | "Verified" | ok | "Checked 05 Oct 2026, 14:32 IST. Next check by 04 Nov 2026." |
+| Verified | "Verified" | ok | "Last checked 05 Oct 2026, 14:32 IST. Next check by 04 Nov 2026." |
 | In review | "In review" | warn | "We'll tell you within 2 working days." |
 | Due | "Due on 04 Nov 2026" | warn | "We'll check again. You don't need to do anything." or a button when the supplier must act |
 | Lapsed | "Lapsed" | bad | "Buyers can't see this badge. Fix: <action>" with a button |
-Badges: Verified supplier, GST, PAN, MSME (Udyam), Company (MCA), Export-ready (IEC), Bank. Not-started badges are not listed.
+Badge labels are the same words buyers see (K4): Verified supplier, GST verified, PAN verified, MSME registered, Company registered, Export-ready (IEC), Bank verified. Not-started badges are not listed.
 
 **What's due.** Rows from `recheck_due` with the due date. Empty: "Nothing due." in ok colour.
 
@@ -95,10 +95,10 @@ Badges: Verified supplier, GST, PAN, MSME (Udyam), Company (MCA), Export-ready (
 
 ### K3. In review (end state, 390px)
 
-Shown on the status page in place of the checklist when any case is open, and as the screen after step 7. Plain, no illustration, no photo.
+Shown on the status page in place of the checklist when any case is open, and as the screen after step 7. Plain, no illustration, no photo. The WhatsApp notification line is added later, when the WhatsApp story exists; until then no WhatsApp promise is made.
 - Heading: "We're checking your details".
 - Rows: Status "In review" (warn); Opened "05 Oct 2026, 14:32 IST"; Expected "By 07 Oct 2026, 18:00 IST" (the server's `sla_due_at`: 2 IST working days); Reference (mono, short id).
-- Under "What happens next": three short lines. "We check your details against official records." / "You get a message here and on WhatsApp when it's done." / "If we need a document, we'll ask for it here."
+- Under "What happens next": three short lines. "We check your details against official records." / "We'll show the result here." / "If we need a document, we'll ask for it here."
 - Buttons: "Back to home" (primary), "Contact us" (secondary).
 - The reason for the review is never shown (buyer screening and sanctions cases especially). If staff asked for a document, a warn row "We need one more document: Cancelled cheque" with an "Upload" button replaces the "Expected" row.
 - Past the due time: "This is taking longer than usual. We're on it." Never a count-down.
@@ -107,10 +107,10 @@ Shown on the status page in place of the checklist when any case is open, and as
 ### K4. Buyer: badges and detail sheet (desktop 1440px; the sheet is a right drawer, a bottom sheet on phones)
 
 Where: supplier card, quote comparison, showcase page.
-- Badge row: icon plus label text, ink-2 for verified. No colour-only meaning. Max four shown, then "+3 more" opens the sheet. Badge labels: Verified supplier, GST verified, PAN verified, MSME registered, Company registered, Export-ready (IEC), Bank verified. Hindi: needed.
+- Badge row: icon plus label text, ink-2 for verified. No colour-only meaning. Max four shown, then "+3 more" opens the sheet. Badge labels: Verified supplier, GST verified, PAN verified, MSME registered, Company registered, Export-ready (IEC), Bank verified. Hindi: needed. A supplier looking at a buyer sees "GST verified" for an Indian buyer and "Business verified" for a foreign buyer (plan §1.2).
 - Empty (unverified supplier): **pending founder Q2.** Default: muted "Verification in progress". Alternative: show nothing.
 - Error or loading: the badge area is hidden and the card renders without it.
-- Sheet heading is the badge name. One card per source check, label left, value right: Checked "GSTIN", Source "GSTN", Through "Cashfree", Checked on "05 Oct 2026, 14:32 IST", Next check by "04 Nov 2026", Reference "…A1B2C3" (last 6, mono). GST badge may add "Returns filed: last 12 months" as a fact, not a pass or fail (**pending founder Q2**).
+- Sheet heading is the badge name. One card per source check, label left, value right: Checked "GSTIN", Source "GSTN", Through "our verification partner <provider name from the API>", Last checked "05 Oct 2026, 14:32 IST", Next check by "04 Nov 2026", Reference "…A1B2C3" (last 6, mono). GST badge may add "Returns filed: last 12 months" as a fact, not a pass or fail (**pending founder Q2**).
 - Shown: trade name. **Legal name, GSTIN, PAN, street address, bank details and contact details are never shown before award.** Legal name is shown only on the order after award (**pending founder Q10**: trade name on the showcase, legal name after award is the default).
 - Sheet states: loading skeleton; error "Couldn't load this check." + Retry; badge gone since the page loaded: "This badge is no longer active."
 - Buyer's own verification `/b/verify`: same step components as K1 (Consent, GSTIN, Business). Foreign buyer: consent, company name, country, registry number, website, upload registry extract, then the in-review end state K3. A screening hold shows the K3 text only; no reason.
@@ -127,7 +127,7 @@ Where: supplier card, quote comparison, showcase page.
 - Not in this pass: lists, data requests and stats screens (plan §7.4).
 
 ### Spec decisions made here (for founder review)
-- Step tabs replace a progress bar; "one question per screen" is relaxed to one short form per step.
+- At 390px "Step 3 of 6" plus the step name replaces a progress bar (tabs only at 768px and wider, if at all); "one question per screen" is relaxed to one short form per step.
 - Buyer badges are text plus icon, not pills or chips.
 - PAN is masked on screen even though the user typed it, with CSS masking rather than a password field.
 - UPI bank option is listed first only as the pending-founder default; swap is a config flag.
