@@ -1,0 +1,28 @@
+{
+  "model": "opusplan",
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/secrets/**)",
+      "Edit(./**/.env)",
+      "Edit(./**/.env.*)",
+      "Edit(./**/*.pem)",
+      "Edit(./**/*.key)",
+      "Edit(./**/secrets/**)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git -C:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh api:*)",
+      "Bash(gh workflow run:*)",
+      "Edit(./.github/workflows/**)",
+      "Edit(./.claude/**)"
+    ]
+  }
+}

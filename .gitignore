@@ -1,0 +1,55 @@
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+.envrc
+*.tfvars
+!*.tfvars.example
+secrets/
+.claude/settings.local.json
+# logs
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+# node / next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.pnpm-store/
+coverage/
+# local data and large fixtures
+data/
+*.sqlite
+*.db
+*.dump
+tests/fixtures/large/
+evals/**/reports/
+**/*.dwg
+**/*.step
+**/*.stp
+# build and tooling
+dist/
+build/
+.terraform/
+*.tfstate*
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

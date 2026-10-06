@@ -1,0 +1,86 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Never cancel a main run mid-deploy.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Job id `api` is (and `web`, once apps/web lands) the required status checks for branch protection.
+# Keep them stable. No path filters, so they always report.
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          enable-cache: true
+          cache-dependency-glob: services/api/uv.lock
+      - run: uv sync --frozen
+      - run: uv run ruff format --check .
+      - run: uv run ruff check . --config pyproject.toml
+      - run: uv run mypy app tests
+      - run: uv run pytest
+
+  # deploy-dev: DISABLED PLACEHOLDER (E0). Not built yet; documented so the shape is reviewed now.
+  #
+  # Switching it on is a separate PR labelled needs-founder: replace `if: false` with
+  # `if: github.event_name == 'push' && github.ref == 'refs/heads/main'` and add
+  # `permissions: id-token: write` at job level. A hard-coded `if: false` (not a repo
+  # variable) is deliberate so enabling goes through review.
+  #
+  # What it will do, on push to main only:
+  #   1. aws-actions/configure-aws-credentials via OIDC
+  #      (role-to-assume: ${{ vars.AWS_DEV_DEPLOY_ROLE_ARN }}, aws-region: ap-south-1).
+  #      No access keys, ever.
+  #   2. aws-actions/amazon-ecr-login.
+  #   3. Build and push orsyn-api (and orsyn-web, depending on the web hosting decision,
+  #      E0 Q6) images tagged with ${{ github.sha }}.
+  #   4. aws-actions/amazon-ecs-render-task-definition, then
+  #      aws-actions/amazon-ecs-deploy-task-definition to the ECS Fargate dev cluster
+  #      with wait-for-service-stability: true.
+  #   5. curl the dev /health and check that `version` equals the commit SHA.
+  #
+  # Prerequisites (each a later story, each needs-founder):
+  #   - AWS account
+  #   - GitHub OIDC provider and a deploy role restricted to
+  #     repo:<org>/Orsyn:environment:dev
+  #   - ECR repositories
+  #   - ECS cluster and services
+  #   - Dockerfiles
+  #   - a GitHub `dev` environment
+  #
+  # Security design (required when enabling):
+  #   - The GitHub `dev` environment's deployment-branch policy allows only `main`.
+  #   - The role trust policy uses StringEquals (not StringLike) on both
+  #     token.actions.githubusercontent.com:sub = repo:<org>/Orsyn:environment:dev and
+  #     token.actions.githubusercontent.com:aud = sts.amazonaws.com.
+  #   - Role permissions are limited to: ECR push on the named repos;
+  #     ecs:RegisterTaskDefinition, ecs:UpdateService and ecs:Describe* on the dev
+  #     cluster; iam:PassRole only on the dev task and execution roles. No wildcards.
+  #
+  # Pin every aws-actions step to a full commit SHA with a version comment, like above.
+  deploy-dev:
+    if: false # E0: disabled until AWS account exists. Enabling is a needs-founder PR.
+    needs: [api]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: dev
+    steps:
+      - run: echo "deploy-dev is disabled in E0"
